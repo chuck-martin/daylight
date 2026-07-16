@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Annual Sunshine Duration Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Plotly.js CDN -->
+    <script src="https://cdn.plot.ly/plotly-3.6.0.min.js" charset="utf-8"></script>
+    <!-- SunCalc CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="bg-slate-900 border-b border-slate-800 py-6 px-6 shadow-md">
+        <div class="max-w-[1600px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="text-left w-full md:w-auto">
+                <h1 class="text-3xl font-extrabold tracking-tight text-amber-400">SolarPath Analyzer</h1>
+                <p class="text-sm text-slate-400 mt-1">Visualize annual daylight patterns and daylight saving offsets</p>
+            </div>
+            <div class="text-xs text-slate-500 bg-slate-950 p-2.5 rounded-md border border-slate-800 self-start md:self-auto">
+                Engine: SunCalc (Astronomical Math) & Plotly Heatmaps
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-grow max-w-[1600px] w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
+        
+        <!-- Sidebar Controls (Left Aligned, spanning 1/5 of the layout) -->
+        <section class="lg:col-span-1 bg-slate-900 p-5 rounded-xl border border-slate-800 flex flex-col gap-6 shadow-xl h-fit text-left">
+            
+            <!-- 1. Location Input -->
+            <div class="text-left">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">1. Target Location</h2>
+                <div class="flex flex-col gap-2">
+                    <input 
+                        type="text" 
+                        id="locationInput" 
+                        placeholder="e.g. San Jose, CA or 37.33, -121.88" 
+                        class="w-full bg-slate-950 text-slate-100 placeholder-slate-600 border border-slate-800 rounded-lg py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                    >
+                    <div class="flex gap-2">
+                        <button 
+                            id="searchBtn" 
+                            class="flex-1 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 font-bold py-2 px-3 rounded-lg text-sm transition-colors"
+                        >
+                            Search Location
+                        </button>
+                        <button 
+                            id="locateBtn" 
+                            class="bg-slate-800 hover:bg-slate-700 text-slate-100 p-2.5 rounded-lg text-sm transition-colors border border-slate-700"
+                            title="Detect My Location"
+                        >
+                            📍 GPS
+                        </button>
+                    </div>
+                </div>
+                <div id="locationFeedback" class="text-xs text-amber-300 mt-2 italic min-h-[1.5rem]">Detecting your location...</div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- 2. Timezone Settings -->
+            <div class="text-left">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-3">2. Time System</h2>
+                <div class="flex flex-col gap-3">
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-slate-800/50 transition-colors">
+                        <input type="radio" name="tzMode" value="switching" checked class="w-4 h-4 text-amber-500 accent-amber-500">
+                        <div>
+                            <span class="block text-sm font-semibold">Observed Time</span>
+                            <span class="block text-xs text-slate-400">Standard & Daylight switches (US rules)</span>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-slate-800/50 transition-colors">
+                        <input type="radio" name="tzMode" value="standard" class="w-4 h-4 text-amber-500 accent-amber-500">
+                        <div>
+                            <span class="block text-sm font-semibold">Standard Time Only</span>
+                            <span class="block text-xs text-slate-400">Lock to winter offset (e.g. ST)</span>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-slate-800/50 transition-colors">
+                        <input type="radio" name="tzMode" value="daylight" class="w-4 h-4 text-amber-500 accent-amber-500">
+                        <div>
+                            <span class="block text-sm font-semibold">Daylight Time Only</span>
+                            <span class="block text-xs text-slate-400">Lock to summer offset (e.g. DT)</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Stats/Info panel -->
+            <div class="mt-auto bg-slate-950 p-4 rounded-lg border border-slate-800 text-xs text-slate-400 flex flex-col gap-2.5 text-left">
+                <span class="font-bold text-slate-300">Plot Map Legend:</span>
+                <span class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-[#fdba74] rounded"></span> Daylight (Sun above horizon)</span>
+                <span class="flex items-center gap-2"><span class="w-3.5 h-3.5 bg-[#0f172a] rounded border border-slate-800"></span> Night (Sun below horizon)</span>
+                <span class="flex items-center gap-2"><span class="w-3.5 border-t-2 border-dashed border-sky-400"></span> Spring Forward Transition</span>
+                <span class="flex items-center gap-2"><span class="w-3.5 border-t-2 border-dashed border-rose-400"></span> Fall Back Transition</span>
+                <div class="border-t border-slate-800 my-1"></div>
+                <div id="statsPanel" class="space-y-1">Calculating data...</div>
+            </div>
+
+        </section>
+
+        <!-- Chart Output (Spanning 4/5 of the layout for double standard width) -->
+        <section class="lg:col-span-4 bg-slate-900 p-5 rounded-xl border border-slate-800 flex flex-col shadow-xl min-h-[600px]">
+            <div id="chartContainer" class="w-full flex-grow min-h-[550px]">
+                <!-- Plotly outputs here -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-900 text-slate-600 text-xs py-4 text-center mt-auto">
+        Carpet Plot visualization engine &bull; Standard coordinates are mapped dynamically.
+    </footer>
+
+    <!-- Core Scripting Logic -->
+    <script>
+        // State variables (Default: San Jose, CA)
+        let currentLat = 37.3382; 
+        let currentLng = -121.8863; 
+        let currentLabel = "San Jose, California, USA";
+        let baseTimezoneOffsetMinutes = -480; // Pacific Standard Time (UTC-8)
+
+        // Dom Elements
+        const locationInput = document.getElementById('locationInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const locateBtn = document.getElementById('locateBtn');
+        const feedback = document.getElementById('locationFeedback');
+        const statsPanel = document.getElementById('statsPanel');
+        const tzRadios = document.getElementsByName('tzMode');
+
+        // Setup Events
+        searchBtn.addEventListener('click', handleSearch);
+        locationInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSearch(); });
+        locateBtn.addEventListener('click', () => getBrowserLocation(true));
+        tzRadios.forEach(radio => radio.addEventListener('change', generateAndPlotData));
+
+        // Initial setup run with Auto-Location Try
+        window.addEventListener('load', () => {
+            getBrowserLocation(false); // Silent check on load, fall back dynamically if blocked
+        });
+
+        // 1. Geocoding and Timezone Utilities
+        async function handleSearch() {
+            const query = locationInput.value.trim();
+            if (!query) return;
+
+            // Check if user inputted lat/lng coordinates manually
+            const latLngReg = /^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/;
+            if (latLngReg.test(query)) {
+                const parts = query.split(',').map(num => parseFloat(num.trim()));
+                currentLat = parts[0];
+                currentLng = parts[1];
+                currentLabel = `${currentLat.toFixed(3)}°N, ${currentLng.toFixed(3)}°E`;
+                feedback.textContent = "Parsed manually entered GPS coordinates.";
+                await updateLocalOffset(currentLat, currentLng);
+                generateAndPlotData();
+                return;
+            }
+
+            feedback.textContent = "Searching location database...";
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data && data.length > 0) {
+                    currentLat = parseFloat(data[0].lat);
+                    currentLng = parseFloat(data[0].lon);
+                    currentLabel = data[0].display_name.split(',').slice(0, 3).join(',');
+                    feedback.textContent = `Plotted: ${currentLabel}`;
+                    await updateLocalOffset(currentLat, currentLng);
+                    generateAndPlotData();
+                } else {
+                    feedback.textContent = "Location not found. Try a city name or latitude,longitude.";
+                }
+            } catch (err) {
+                feedback.textContent = "Geocoding temporary error. Rendered default coordinates.";
+                console.error(err);
+            }
+        }
+
+        function getBrowserLocation(explicitRequest = false) {
+            if (!navigator.geolocation) {
+                if (explicitRequest) feedback.textContent = "Geolocation is not supported by your browser.";
+                fallbackToDefault();
+                return;
+            }
+            
+            const options = { timeout: 4000 };
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    currentLat = position.coords.latitude;
+                    currentLng = position.coords.longitude;
+                    currentLabel = "Your Local GPS Coordinates";
+                    locationInput.value = `${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`;
+                    feedback.textContent = "Connected to local GPS Coordinates.";
+                    await updateLocalOffset(currentLat, currentLng);
+                    generateAndPlotData();
+                }, 
+                (err) => {
+                    if (explicitRequest) {
+                        feedback.textContent = "Failed to access browser location (Permission denied/Timeout).";
+                    } else {
+                        feedback.textContent = "Location access skipped. Showing San Jose, CA.";
+                    }
+                    fallbackToDefault();
+                },
+                options
+            );
+        }
+
+        function fallbackToDefault() {
+            locationInput.value = `${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`;
+            updateLocalOffset(currentLat, currentLng).then(() => {
+                generateAndPlotData();
+            });
+        }
+
+        // Get approximate timezone offsets to render localized time beautifully
+        async function updateLocalOffset(lat, lng) {
+            try {
+                let approxOffsetHours = Math.round(lng / 15);
+                baseTimezoneOffsetMinutes = approxOffsetHours * 60;
+                
+                // Align to actual browser system offset if matches local vicinity
+                const systemOffset = -new Date().getTimezoneOffset(); 
+                const systemOffsetHours = systemOffset / 60;
+                
+                if (Math.abs(approxOffsetHours - systemOffsetHours) <= 2) {
+                    baseTimezoneOffsetMinutes = systemOffset;
+                }
+            } catch (e) {
+                console.warn("Using approximate timezone mapping.");
+            }
+        }
+
+        // 2. Dynamic US Daylight Saving rules calculation
+        function getDSTTransitionIndices(year) {
+            // March DST: 2nd Sunday of March
+            const march1 = new Date(Date.UTC(year, 2, 1));
+            const march1Day = march1.getUTCDay();
+            const dstStartDay = 1 + (march1Day === 0 ? 7 : 14 - march1Day);
+            
+            // November DST: 1st Sunday of November
+            const nov1 = new Date(Date.UTC(year, 10, 1));
+            const nov1Day = nov1.getUTCDay();
+            const dstEndDay = 1 + (nov1Day === 0 ? 0 : 7 - nov1Day);
+
+            // Compute day-of-year indices (0-indexed)
+            const msPerDay = 86400000;
+            const jan1 = new Date(Date.UTC(year, 0, 1));
+            const dstStartObj = new Date(Date.UTC(year, 2, dstStartDay));
+            const dstEndObj = new Date(Date.UTC(year, 10, dstEndDay));
+
+            const startIdx = Math.round((dstStartObj - jan1) / msPerDay);
+            const endIdx = Math.round((dstEndObj - jan1) / msPerDay);
+
+            return { startIdx, endIdx, dstStartObj, dstEndObj };
+        }
+
+        function isUSDST(date, dstStart, dstEnd) {
+            return date >= dstStart && date < dstEnd;
+        }
+
+        function formatDuration(ms) {
+            if (isNaN(ms) || ms <= 0) return "0h 0m";
+            const totalMins = Math.round(ms / 60000);
+            const hrs = Math.floor(totalMins / 60);
+            const mins = totalMins % 60;
+            return `${hrs}h ${mins}m`;
+        }
+
+        // 3. Calculation and Rendering Engine
+        function generateAndPlotData() {
+            let tzMode = 'switching';
+            tzRadios.forEach(radio => {
+                if (radio.checked) tzMode = radio.value;
+            });
+
+            const year = 2026; 
+            const daysInYear = 365;
+            const hourStep = 0.5; // Sampling rate
+            const hoursInDay = 24;
+
+            const dstDetails = getDSTTransitionIndices(year);
+
+            // Output Grid Arrays
+            const zData = []; 
+            const xLabels = []; 
+            const yLabels = []; 
+            const hoverText = []; // Custom hover text dimensions to display detailed twilight calculations
+
+            // Compute structural X labels
+            for (let hour = 0; hour < hoursInDay; hour += hourStep) {
+                const hh = String(Math.floor(hour)).padStart(2, '0');
+                const mm = String((hour % 1) * 60).padStart(2, '0');
+                xLabels.push(`${hh}:${mm}`);
+            }
+
+            let totalSunlightMinutes = 0;
+
+            // Compute Grid Day by Day
+            for (let d = 0; d < daysInYear; d++) {
+                const dayRow = [];
+                const hoverRow = [];
+                const currentDayObj = new Date(Date.UTC(year, 0, d + 1));
+                const dateStr = currentDayObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                yLabels.push(dateStr);
+
+                // Calculate Sunlight/Twilight specifics once per day for accuracy
+                const noonUTC = new Date(Date.UTC(year, 0, d + 1, 12, 0, 0));
+                const sunTimes = SunCalc.getTimes(noonUTC, currentLat, currentLng);
+                
+                const dayLengthMs = sunTimes.sunset - sunTimes.sunrise;
+                const twilightLengthMs = sunTimes.dusk - sunTimes.dawn; // Civil twilight boundaries
+
+                const dayLengthStr = formatDuration(dayLengthMs);
+                const twilightLengthStr = formatDuration(twilightLengthMs);
+
+                for (let h = 0; h < hoursInDay; h += hourStep) {
+                    let checkDate = new Date(Date.UTC(year, 0, d + 1, Math.floor(h), (h % 1) * 60));
+                    let offsetMinutes = baseTimezoneOffsetMinutes;
+                    
+                    if (tzMode === 'daylight') {
+                        offsetMinutes += 60; 
+                    } else if (tzMode === 'switching') {
+                        if (isUSDST(checkDate, dstDetails.dstStartObj, dstDetails.dstEndObj)) {
+                            offsetMinutes += 60; 
+                        }
+                    }
+
+                    const utcEquivDate = new Date(checkDate.getTime() - (offsetMinutes * 60 * 1000));
+                    const sunPos = SunCalc.getPosition(utcEquivDate, currentLat, currentLng);
+                    const sunIsUp = sunPos.altitude > 0 ? 1 : 0;
+                    
+                    dayRow.push(sunIsUp);
+                    if (sunIsUp) {
+                        totalSunlightMinutes += (hourStep * 60);
+                    }
+
+                    // Formatting clean contrasting text in HTML style for Plotly hover tooltips
+                    const hourLabel = String(Math.floor(h)).padStart(2, '0') + ":" + String((h % 1) * 60).padStart(2, '0');
+                    hoverRow.push(
+                        `<b>Date:</b> ${dateStr}<br>` +
+                        `<b>Time:</b> ${hourLabel}<br>` +
+                        `<b>Status:</b> ${sunIsUp ? '☀️ Daylight' : '🌑 Night/Twilight'}<br>` +
+                        `<b>Sunrise to Sunset:</b> ${dayLengthStr}<br>` +
+                        `<b>Civil Twilight to Twilight:</b> ${twilightLengthStr}`
+                    );
+                }
+                zData.push(dayRow);
+                hoverText.push(hoverRow);
+            }
+
+            // Update local text stats
+            const avgSunlightHours = (totalSunlightMinutes / daysInYear / 60).toFixed(1);
+            const standardOffsetStr = `${baseTimezoneOffsetMinutes >= 0 ? '+' : ''}${Math.round(baseTimezoneOffsetMinutes / 60)}h`;
+            statsPanel.innerHTML = `
+                <div class="font-bold text-slate-200">Session Metrics:</div>
+                <div>• Lat/Lng: ${currentLat.toFixed(3)}, ${currentLng.toFixed(3)}</div>
+                <div>• Active Timezone: UTC ${standardOffsetStr}</div>
+                <div>• Daylight Average: ${avgSunlightHours} hrs/day</div>
+                <div>• Total Daylight: ${(totalSunlightMinutes / 60).toLocaleString(undefined, {maximumFractionDigits:0})} hrs/year</div>
+            `;
+
+            // Setup custom shapes for the Spring/Fall transitions if observed mode is checked
+            const shapes = [];
+            if (tzMode === 'switching') {
+                const springLabel = yLabels[dstDetails.startIdx];
+                const fallLabel = yLabels[dstDetails.endIdx];
+
+                shapes.push(
+                    {
+                        type: 'line',
+                        xref: 'paper',
+                        yref: 'y',
+                        x0: 0,
+                        x1: 1,
+                        y0: springLabel,
+                        y1: springLabel,
+                        line: { color: '#38bdf8', width: 1.5, dash: 'dash' }
+                    },
+                    {
+                        type: 'line',
+                        xref: 'paper',
+                        yref: 'y',
+                        x0: 0,
+                        x1: 1,
+                        y0: fallLabel,
+                        y1: fallLabel,
+                        line: { color: '#f43f5e', width: 1.5, dash: 'dash' }
+                    }
+                );
+            }
+
+            // Render Plotly Heatmap
+            const data = [{
+                z: zData,
+                x: xLabels,
+                y: yLabels,
+                type: 'heatmap',
+                hovertext: hoverText,
+                hoverinfo: 'text',
+                colorscale: [
+                    [0, '#0f172a'], // Deep dark slate (Night)
+                    [1, '#fdba74']  // Contrast Amber (Daylight)
+                ],
+                showscale: false,
+                xgap: 0.2,
+                ygap: 0.2
+            }];
+
+            const layout = {
+                title: {
+                    text: `Annual Sunshine Map: ${currentLabel}`,
+                    font: { color: '#ffffff', size: 18, family: 'system-ui, sans-serif', weight: 'bold' }
+                },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                xaxis: {
+                    title: { text: 'Time of Day', font: { color: '#ffffff', size: 12 } },
+                    tickcolor: '#64748b',
+                    gridcolor: 'rgba(255, 255, 255, 0.08)', // Soft visible grid lines
+                    showgrid: true,
+                    tickfont: { color: '#ffffff', size: 11 },
+                    tickvals: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00']
+                },
+                yaxis: {
+                    title: { text: 'Calendar (Jan → Dec)', font: { color: '#ffffff', size: 12 } },
+                    tickcolor: '#64748b',
+                    gridcolor: 'rgba(255, 255, 255, 0.08)', // Soft visible grid lines
+                    showgrid: true,
+                    tickfont: { color: '#ffffff', size: 11 },
+                    autorange: 'reversed', 
+                    tickvals: ['Jan 1', 'Feb 1', 'Mar 1', 'Apr 1', 'May 1', 'Jun 1', 'Jul 1', 'Aug 1', 'Sep 1', 'Oct 1', 'Nov 1', 'Dec 1']
+                },
+                margin: { l: 70, r: 20, t: 70, b: 60 },
+                shapes: shapes,
+                hoverlabel: {
+                    bgcolor: '#1e293b',
+                    bordercolor: '#475569',
+                    font: { color: '#ffffff', family: 'system-ui, sans-serif' }
+                }
+            };
+
+            const config = {
+                responsive: true,
+                displayModeBar: false 
+            };
+
+            Plotly.newPlot('chartContainer', data, layout, config);
+        }
+    </script>
+</body>
+</html>
